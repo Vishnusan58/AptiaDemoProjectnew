@@ -46,6 +46,7 @@ async function testAzureStorage() {
         process.exit(1);
     }
 }
+// add
 
 // Run the test
 testAzureStorage();
