@@ -4,8 +4,7 @@ import { CONFIG } from './config';
 
 // Initialize Pinecone
 const pinecone = new Pinecone({
-    apiKey: process.env.PINECONE_API_KEY || 'pinecone_key',
-    environment: process.env.PINECONE_ENVIRONMENT || 'us-east-1'
+    apiKey: process.env.PINECONE_API_KEY || 'pinecone_key'
 });
 
 // Test connection function
