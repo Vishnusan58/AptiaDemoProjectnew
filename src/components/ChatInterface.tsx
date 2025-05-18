@@ -1,9 +1,16 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import { Send, UserCircle, BotIcon as Bot, X, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Input } from '@/components/ui/Input';
+import type { Message as ChatAppMessage } from '@/lib/types'; // Import your main Message type from lib/types.ts
 
+// Define the Message interface clearly for this component.
+// It extends the ChatAppMessage from your lib/types.ts to ensure consistency.
+type Message = ChatAppMessage
+
+// Define interfaces for plan data for type safety and clarity.
 interface CoverageDetail {
     label: string;
     inNetwork: string;
@@ -16,426 +23,387 @@ interface InsurancePlan {
     coverageDetails?: CoverageDetail[];
 }
 
-interface Message {
-    type: 'user' | 'bot';
-    content: string;
-    recommendations?: InsurancePlan[];
-    confidence?: number;
-    options?: string[];
-}
-
+// Your existing plan data (CURRENT_PLAN, AVAILABLE_PLANS)
+// It's good practice to type these as well.
 const CURRENT_PLAN: InsurancePlan = {
     planName: "Horizon Platinum",
     coverageDetails: [
-        {
-            label: "Physician Visit",
-            inNetwork: "$20 Copayment / Visit",
-            outOfNetwork: "30% Coinsurance"
-        },
-        {
-            label: "Diagnostic Test (X-Ray, Blood Work)",
-            inNetwork: "No Charge",
-            outOfNetwork: "30% Coinsurance"
-        },
-        {
-            label: "Imaging (CT/PET Scans, MRIs)",
-            inNetwork: "No Charge",
-            outOfNetwork: "30% Coinsurance"
-        },
-        {
-            label: "Outpatient Surgery",
-            inNetwork: "$150 Copayment / Visit",
-            outOfNetwork: "30% Coinsurance"
-        },
-        {
-            label: "Emergency Room Care",
-            inNetwork: "$100 Copayment / Visit",
-            outOfNetwork: "$100 Copayment / Visit (Deductible does not apply)"
-        },
-        {
-            label: "Emergency Medical Transportation",
-            inNetwork: "No Charge",
-            outOfNetwork: "No Charge (Deductible does not apply)"
-        },
-        {
-            label: "Urgent Care",
-            inNetwork: "$75 Copayment",
-            outOfNetwork: "$75 Copayment (Deductible does not apply)"
-        }
+        { label: "Physician Visit", inNetwork: "$20 Copayment / Visit", outOfNetwork: "30% Coinsurance" },
+        { label: "Diagnostic Test (X-Ray, Blood Work)", inNetwork: "No Charge", outOfNetwork: "30% Coinsurance" },
+        { label: "Imaging (CT/PET Scans, MRIs)", inNetwork: "No Charge", outOfNetwork: "30% Coinsurance" },
+        { label: "Outpatient Surgery", inNetwork: "$150 Copayment / Visit", outOfNetwork: "30% Coinsurance" },
+        { label: "Emergency Room Care", inNetwork: "$100 Copayment / Visit", outOfNetwork: "$100 Copayment / Visit (Deductible does not apply)" },
+        { label: "Emergency Medical Transportation", inNetwork: "No Charge", outOfNetwork: "No Charge (Deductible does not apply)" },
+        { label: "Urgent Care", inNetwork: "$75 Copayment", outOfNetwork: "$75 Copayment (Deductible does not apply)" }
     ]
 };
 
 const AVAILABLE_PLANS: InsurancePlan[] = [
+    CURRENT_PLAN, // Includes the current plan as an available option
     {
-        planName: "Horizon Platinum",
-        summary:
-            "Horizon BCBSNJ Direct Access Platinum BlueCard has a $1,500 individual/$3,000 family deductible for out-of-network providers, while preventive care is covered without cost-sharing. Maternity services include $20 copay for office visits, $40 for specialists, no charge for in-network childbirth professional services, and a $250 per day copay for facility services (max $1,250 per admission). Children's eye exams are covered in-network, with a $150 frame allowance for glasses, but dental check-ups are not covered. This plan is suitable for a pregnant person and families with children due to comprehensive maternity coverage, no-cost preventive care, and vision benefits for kids while ensuring lower costs through in-network providers."
+        planName: "United Healthcare", // Example Plan 1
+        summary: "UnitedHealthcare EPO plan offers comprehensive benefits with a focus on network providers. It typically features no overall deductible for in-network services and a fixed out-of-pocket maximum. Maternity coverage is usually robust, often with no charge for routine office visits and professional services, though facility services might incur a per-day copay. Children's vision and dental benefits are often included, making it a strong candidate for families.",
+        // Add more coverageDetails if available for a richer display
     },
     {
-        planName: "United Healthcare",
-        summary:
-            "UnitedHealthcare EPO plan has no overall deductible and an out-of-pocket limit of $3,500 (individual) and $7,000 (family). Maternity services include no charge for office visits and professional services, with a $200 per day copay for facility services (max $400 per admission). Children's eye exams cost $10, glasses have 50% coinsurance, and dental check-ups are fully covered twice per year (up to age 19). This plan is suitable for a pregnant person and families with children due to comprehensive maternity coverage, no-cost preventive care, and essential vision and dental benefits for kids while ensuring lower costs through network providers."
-    },
-    {
-        planName: "AmeriHealth Platinum",
-        summary:
-            "AmeriHealth Platinum EPO National Access with NY has no overall deductible and an out-of-pocket limit of $3,000 (individual) and $6,000 (family). Maternity services include no charge for preventive visits and professional services, with a $400 per day copay for facility services (max 5 copayments per admission). Children's eye exams and glasses are covered in-network, but dental check-ups are not included. This plan is suitable for a pregnant person and families with children due to comprehensive maternity coverage, no-cost preventive care, and essential vision benefits for kids while ensuring lower costs through in-network providers."
+        planName: "AmeriHealth Platinum", // Example Plan 2
+        summary: "AmeriHealth Platinum EPO National Access provides broad coverage, often with no overall deductible and a defined out-of-pocket limit. Maternity care typically includes no charge for preventive visits and professional services, with a copay structure for facility services. Vision benefits for children are usually part of the plan, though dental coverage might vary.",
+        // Add more coverageDetails if available
     }
 ];
 
-const ChatInterface = () => {
-    // State declarations including the missing implementations
-    const [messages, setMessages] = useState<Message[]>([
-        {
-            type: 'bot',
-            content: "Here is the summary of benefits and coverage under your current health plan.",
-            recommendations: [CURRENT_PLAN]
-        },
-        {
-            type: 'bot',
-            content: "Would you like to update your current plan?"
-        }
-    ]);
-    const [inputValue, setInputValue] = useState('');
-    const [loading, setLoading] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<string>('');
-    const [userId] = useState(() => Math.random().toString(36).substring(7));
-    const [isCurrentPlanMode, setIsCurrentPlanMode] = useState(false);
-    const [awaitingLifeEvent, setAwaitingLifeEvent] = useState(false);
-    const [planRecommendationShown, setPlanRecommendationShown] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+// Sub-component for rendering individual messages (MessageItem)
+const MessageItem: React.FC<{
+    message: Message;
+    selectedPlanName?: string;
+    onPlanSelect: (planName: string) => void;
+    onOptionClick: (optionText: string) => void;
+}> = ({ message, selectedPlanName, onPlanSelect, onOptionClick }) => {
+    const [formattedTime, setFormattedTime] = useState('');
 
+    // Effect to format timestamp on the client side to avoid hydration mismatch
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
-
-    const handleRagApiCall = async (userMessage: string) => {
-        try {
-            // Pass the selectedPlan so that the backend LLM prompt includes it
-            const response = await fetch('/api/rag', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: userMessage,
-                    userId: userId,
-                    selectedPlan: selectedPlan
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-
-            const data = await response.json();
-            return data;
-        } catch (error) {
-            console.error('RAG API Error:', error);
-            throw error;
+        if (message.timestamp) {
+            setFormattedTime(new Date(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
         }
-    };
+    }, [message.timestamp]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!inputValue.trim()) return;
+    return (
+        <div className={`flex mb-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+            {/* Bot Avatar */}
+            {message.type === 'bot' && <Bot className="h-6 w-6 text-slate-500 mr-2 flex-shrink-0 mt-1" />}
 
-        const userMessage = inputValue;
-        setInputValue('');
-        setLoading(true);
+            <div className={`max-w-[75%] md:max-w-[80%] flex flex-col ${message.type === 'user' ? 'items-end' : 'items-start'}`}>
+                {/* Message Bubble */}
+                <div
+                    className={`py-2 px-3 shadow-sm text-sm ${
+                        message.type === 'user'
+                            ? 'bg-teal-600 text-white rounded-lg rounded-br-none' // User message style
+                            : 'bg-slate-100 text-slate-800 rounded-lg rounded-bl-none' // Bot message style
+                    }`}
+                >
+                    {/* Message Content - prose class helps with basic markdown from LLM */}
+                    <div className="prose prose-sm text-inherit max-w-none" dangerouslySetInnerHTML={{ __html: message.content.replace(/\n/g, '<br />') }}></div>
 
-        setMessages(prev => [...prev, { type: 'user', content: userMessage }]);
-
-        try {
-            // Handle current plan mode flow - if user types "no"
-            if (userMessage.toLowerCase() === 'no' && !isCurrentPlanMode) {
-                setIsCurrentPlanMode(true);
-                setSelectedPlan('Horizon Platinum'); // Set the selected plan
-
-                // First, add the response message
-                setMessages(prev => [...prev, {
-                    type: 'bot',
-                    content: "The summary of benefits and coverage under your current health plan is given above. Pl let me know if you need any other information"
-                }]);
-
-                try {
-                    const data = await handleRagApiCall(userMessage);
-                    setMessages(prev => [...prev, {
-                        type: 'bot',
-                        content: data.message,
-                        confidence: data.metadata?.confidence
-                    }]);
-                } catch (error) {
-                    setMessages(prev => [...prev, {
-                        type: 'bot',
-                        content: "I'm having trouble getting that information. Please try asking your question again."
-                    }]);
-                }
-            }
-            // Current plan mode - route queries through RAG
-            else if (isCurrentPlanMode) {
-                try {
-                    const data = await handleRagApiCall(userMessage);
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            type: 'bot',
-                            content: data.message,
-                            confidence: data.metadata?.confidence
-                        }
-                    ]);
-                } catch (error) {
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            type: 'bot',
-                            content: "I'm having trouble getting that information. Please try asking your question again."
-                        }
-                    ]);
-                }
-            }
-            // When user answers "yes" or "modify" initially, prompt for life event details
-            else if (
-                (userMessage.toLowerCase() === 'yes' || userMessage.toLowerCase() === "modify") &&
-                !selectedPlan &&
-                !planRecommendationShown
-            ) {
-                setAwaitingLifeEvent(true);
-                setMessages(prev => [
-                    ...prev,
-                    {
-                        type: 'bot',
-                        content: "Are there any life events that require an update in your plan and coverages?"
-                    }
-                ]);
-            }
-            // Handle life event answer and then show plan recommendations
-            else if (awaitingLifeEvent && !planRecommendationShown) {
-                const planRequestKeywords = [
-                    'recommend',
-                    'suggestion',
-                    'best',
-                    'plan',
-                    'coverage',
-                    'family',
-                    'married',
-                    'marriage',
-                    'spouse',
-                    'wife',
-                    'husband',
-                    'child',
-                    'baby',
-                    'pregnant',
-                    'maternity',
-                    'moving',
-                    'relocate',
-                    'health',
-                    'medical',
-                    'which',
-                    'what',
-                    'need',
-                    'looking',
-                    'want'
-                ];
-
-                const containsPlanRequest = planRequestKeywords.some(keyword =>
-                    userMessage.toLowerCase().includes(keyword)
-                );
-
-                if (containsPlanRequest || userMessage.length > 0) {
-                    let recommendationMessage =
-                        "Based on your needs, here are our recommended plans:";
-                    if (userMessage.toLowerCase().match(/(?:wife|baby|child|pregnant|maternity|family)/)) {
-                        recommendationMessage =
-                            "Here are our recommended plans with family and maternity coverage:";
-                        AVAILABLE_PLANS.sort((a, b) => {
-                            const aMaternity = a.summary?.toLowerCase().includes("maternity")
-                                ? 1
-                                : 0;
-                            const bMaternity = b.summary?.toLowerCase().includes("maternity")
-                                ? 1
-                                : 0;
-                            return bMaternity - aMaternity;
-                        });
-                    }
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            type: 'bot',
-                            content: recommendationMessage,
-                            recommendations: AVAILABLE_PLANS
-                        }
-                    ]);
-                    setAwaitingLifeEvent(false);
-                    setPlanRecommendationShown(true);
-                }
-            }
-            // Handle plan selection (if the user types in a plan name)
-            else if (!selectedPlan && AVAILABLE_PLANS.some(plan => userMessage.includes(plan.planName))) {
-                const plan = AVAILABLE_PLANS.find(p => userMessage.includes(p.planName));
-                if (plan) {
-                    setSelectedPlan(plan.planName);
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            type: 'bot',
-                            content: `You've selected ${plan.planName}. What questions do you have about this plan?`
-                        }
-                    ]);
-                }
-            }
-            // All further queries go to RAG once a plan is selected
-            else if (selectedPlan || planRecommendationShown) {
-                try {
-                    const data = await handleRagApiCall(userMessage);
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            type: 'bot',
-                            content: data.message
-                        }
-                    ]);
-                } catch (error) {
-                    setMessages(prev => [
-                        ...prev,
-                        {
-                            type: 'bot',
-                            content: "I'm having trouble getting that information. Please try asking your question again."
-                        }
-                    ]);
-                }
-            } else {
-                setMessages(prev => [
-                    ...prev,
-                    {
-                        type: 'bot',
-                        content:
-                            "I can help you better if you select a specific plan first. Would you like to see our available plans?",
-                        options: ['Yes', 'No']
-                    }
-                ]);
-            }
-        } catch (error) {
-            console.error('Error:', error);
-            setMessages(prev => [
-                ...prev,
-                {
-                    type: 'bot',
-                    content:
-                        "I apologize, but I'm having trouble processing your request. Please try again."
-                }
-            ]);
-        }
-        setLoading(false);
-    };
-
-    const handlePlanSelection = async (planName: string) => {
-        setSelectedPlan(planName);
-        setMessages(prev => [
-            ...prev,
-            { type: 'user', content: `I want to know more about ${planName}` },
-            {
-                type: 'bot',
-                content: `You've selected ${planName}. How can I help you with this plan? Feel free to ask any questions about coverage, benefits, or specific services.`
-            }
-        ]);
-    };
-
-    const renderMessage = (message: Message, index: number) => {
-        if (message.type === 'user') {
-            return (
-                <div key={index} className="flex justify-end mb-4 text-right">
-                    <div className="bg-blue-500 text-white rounded-lg py-2 px-4 max-w-[70%]">
-                        {message.content}
-                    </div>
-                </div>
-            );
-        }
-        return (
-            <div key={index} className="flex flex-col mb-4 items-start text-left">
-                <div className="bg-gray-100 rounded-lg py-2 px-4 max-w-[70%]">
-                    <div className="mb-2">{message.content}</div>
-                    {message.options && (
-                        <div className="flex flex-wrap gap-2 mt-2">
+                    {/* Plan Recommendations */}
+                    {message.recommendations && message.recommendations.length > 0 && (
+                        <div className="mt-2.5 space-y-2.5">
+                            {message.recommendations.map((plan, i) => (
+                                <Card
+                                    key={`${plan.planName}-${message.id}-${i}`} // Unique key for each plan card
+                                    className={`p-2.5 hover:shadow-md transition-shadow cursor-pointer ${
+                                        selectedPlanName === plan.planName ? 'border-2 border-teal-500 bg-teal-50' : 'border border-slate-200 bg-white'
+                                    }`}
+                                    onClick={() => onPlanSelect(plan.planName)}
+                                >
+                                    <h3 className="font-semibold text-teal-700 mb-1 text-sm">{plan.planName}</h3>
+                                    {/* Display plan summary or coverage details */}
+                                    {plan.coverageDetails && plan.coverageDetails.length > 0 ? (
+                                        <div className="text-xs space-y-0.5 text-slate-600">
+                                            <div className="grid grid-cols-[auto,1fr,1fr] gap-x-1.5 mb-0.5 text-slate-700 items-center">
+                                                <span className="font-medium text-xs">Service</span>
+                                                <div className="text-center flex flex-col text-xs"><span>In-Network</span></div>
+                                                <div className="text-center flex flex-col text-xs"><span>Out-of-Network</span></div>
+                                            </div>
+                                            {plan.coverageDetails.map((detail, j) => (
+                                                <div key={`${plan.planName}-detail-${message.id}-${j}`} className="grid grid-cols-[auto,1fr,1fr] gap-x-1.5 border-t border-slate-100 pt-1 items-center">
+                                                    <span className="text-slate-500 text-xs font-medium">{detail.label}</span>
+                                                    <span className="text-center text-xs">{detail.inNetwork}</span>
+                                                    <span className="text-center text-xs">{detail.outOfNetwork}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : plan.summary ? (
+                                        <p className="text-slate-600 prose prose-xs max-w-none">{plan.summary}</p>
+                                    ): null}
+                                </Card>
+                            ))}
+                        </div>
+                    )}
+                    {/* Quick Reply Options */}
+                    {message.options && message.options.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2 pt-1.5 border-t border-slate-200">
                             {message.options.map((option, i) => (
                                 <Button
-                                    key={i}
-                                    variant="outline"
-                                    className="text-sm"
-                                    onClick={() => {
-                                        setInputValue(option);
-                                        handleSubmit(new Event('submit') as any);
-                                    }}
+                                    key={`option-${message.id}-${i}`} // Unique key for each option
+                                    variant="outline" size="sm"
+                                    className="text-xs bg-white border-slate-300 text-teal-600 hover:bg-slate-50 hover:border-teal-500 h-auto py-1 px-2 rounded-md"
+                                    onClick={() => onOptionClick(option)}
                                 >
                                     {option}
                                 </Button>
                             ))}
                         </div>
                     )}
-                    {message.recommendations && (
-                        <div className="mt-4 space-y-4">
-                            {message.recommendations.map((plan, i) => (
-                                <Card
-                                    key={i}
-                                    className={`p-4 hover:shadow-lg transition-shadow cursor-pointer ${
-                                        selectedPlan === plan.planName ? 'border-2 border-blue-500' : ''
-                                    }`}
-                                    onClick={() => handlePlanSelection(plan.planName)}
-                                >
-                                    <h3 className="font-bold mb-2">{plan.planName}</h3>
-                                    <div className="text-sm space-y-1">
-                                        {plan.coverageDetails ? (
-                                            <>
-                                                <div className="grid grid-cols-3 gap-2 font-medium mb-2">
-                                                    <span>Service</span>
-                                                    <div className="flex flex-col">
-                                                        <span>In Network</span>
-                                                        <span>What you need to pay</span>
-                                                    </div>
-                                                    <div className="flex flex-col">
-                                                        <span>Out of Network</span>
-                                                        <span>What you need to pay</span>
-                                                    </div>
-                                                </div>
-                                                {plan.coverageDetails.map((detail, j) => (
-                                                    <div key={j} className="grid grid-cols-3 gap-2">
-                                                        <span className="text-gray-600">{detail.label}</span>
-                                                        <span>{detail.inNetwork}</span>
-                                                        <span>{detail.outOfNetwork}</span>
-                                                    </div>
-                                                ))}
-                                            </>
-                                        ) : (
-                                            <p>{plan.summary}</p>
-                                        )}
-                                    </div>
-                                </Card>
-                            ))}
-                        </div>
-                    )}
                 </div>
+                {/* Timestamp */}
+                {formattedTime && (
+                    <p className={`text-xs mt-0.5 ${message.type === 'user' ? 'text-slate-500 mr-1' : 'text-slate-400 ml-1'}`}>
+                        {formattedTime}
+                    </p>
+                )}
             </div>
-        );
+            {/* User Avatar */}
+            {message.type === 'user' && <UserCircle className="h-6 w-6 text-slate-400 ml-2 flex-shrink-0 mt-1" />}
+        </div>
+    );
+};
+
+// Main Chat Interface Component
+const ChatInterface: React.FC<{ onClose?: () => void, isVisible?: boolean }> = ({ onClose, isVisible = true }) => {
+    // State variables
+    const [messages, setMessages] = useState<Message[]>([]);
+    const [inputValue, setInputValue] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [selectedPlanName, setSelectedPlanName] = useState<string>('');
+    const [userId] = useState(() => `user-${Math.random().toString(36).substring(2, 9)}`); // Unique user ID for the session
+    const [isCurrentPlanMode, setIsCurrentPlanMode] = useState(false); // Tracks if conversation is about current plan
+    const [awaitingLifeEvent, setAwaitingLifeEvent] = useState(false); // Tracks if bot is waiting for life event info
+    const [planRecommendationShown, setPlanRecommendationShown] = useState(false); // Tracks if recommendations were shown
+
+    const messagesEndRef = useRef<HTMLDivElement>(null); // Ref to scroll to the latest message
+
+    // Effect to initialize chat with a welcome message on component mount (client-side only)
+    useEffect(() => {
+        setMessages([
+            {
+                id: `bot-initial-1-${Date.now()}`, type: 'bot',
+                content: "Hello! I'm your Aptia enrollment assistant. How can I help you today?",
+                timestamp: new Date().toISOString() // Timestamps are crucial for ordering and display
+            },
+        ]);
+    }, []); // Empty dependency array ensures this runs only once
+
+    // Effect to scroll to the bottom of the chat when new messages are added or loading state changes
+    useEffect(() => {
+        if (isVisible) { // Only scroll if the chat widget is visible
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
+    }, [messages, loading, isVisible]);
+
+    // Function to handle API call to the RAG backend
+    const handleRagApiCall = async (userMessageContent: string, currentChatHistory: Message[]) => {
+        // Prepare chat history for the API: map to simple {role, content} objects
+        const historyForAPI = currentChatHistory.map(msg => ({
+            role: msg.type === 'user' ? 'user' : 'assistant', // Map 'bot' type to 'assistant' for OpenAI
+            content: msg.content
+        }));
+
+        try {
+            const response = await fetch('/api/rag', { // API endpoint
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    message: userMessageContent,
+                    chatHistory: historyForAPI, // Send the formatted history
+                    userId: userId,
+                    selectedPlan: selectedPlanName // Send name of the currently selected plan
+                }),
+            });
+            if (!response.ok) { // Handle HTTP errors
+                const errorData = await response.json().catch(() => ({details: "Unknown error structure from API"}));
+                throw new Error(`Network response was not ok: ${response.statusText}. Details: ${errorData.details || response.statusText}`);
+            }
+            return await response.json(); // Parse JSON response from API
+        } catch (error) {
+            console.error('RAG API Call Error in ChatInterface:', error);
+            // Return a structured error message for display in chat
+            return { message: "I'm having trouble connecting to my knowledge base. Please try again.", error: true };
+        }
     };
 
+    // Function to handle form submission (when user sends a message)
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault(); // Prevent default form submission
+        if (!inputValue.trim() || loading) return; // Ignore empty messages or if already loading
+
+        const userMessageContent = inputValue;
+        setInputValue(''); // Clear the input field
+
+        // Create the new user message object
+        const newUserMessage: Message = {
+            id: `user-${Date.now()}`, type: 'user',
+            content: userMessageContent, timestamp: new Date().toISOString()
+        };
+
+        // Add new user message to the state and then pass the *updated* list to API call
+        // This ensures the history sent to the API includes the latest user message for context
+        const updatedMessages = [...messages, newUserMessage];
+        setMessages(updatedMessages);
+        setLoading(true); // Set loading state for typing indicator and disabling input
+
+        try {
+            // Send all messages up to the current one as history
+            const historyToSend = updatedMessages;
+
+            const data = await handleRagApiCall(userMessageContent, historyToSend); // Call RAG API
+
+            // Create bot's response message object
+            const botMessage: Message = {
+                id: `bot-${Date.now()}`, type: 'bot',
+                content: data.message || "Sorry, I couldn't process that request at the moment.",
+                timestamp: new Date().toISOString(),
+                recommendations: data.recommendations, // If API returns recommendations
+                options: data.options, // If API returns quick reply options
+                confidence: data.metadata?.confidence // If API returns confidence score
+            };
+            setMessages(prev => [...prev, botMessage]); // Add bot's response to messages
+
+        } catch (error) { // Catch errors from handleSubmit logic or API call
+            console.error('Error in handleSubmit:', error);
+            const errorBotMessage: Message = {
+                id: `bot-error-${Date.now()}`, type: 'bot',
+                content: "Apologies, an unexpected error occurred. Please try asking your question again.",
+                timestamp: new Date().toISOString()
+            };
+            setMessages(prev => [...prev, errorBotMessage]);
+        }
+        setLoading(false); // Reset loading state
+    };
+
+    // Function to handle when a user selects a plan from recommendations
+    const handlePlanSelection = (planName: string) => {
+        setSelectedPlanName(planName); // Set the selected plan name
+        setIsCurrentPlanMode(false); // Exit "current plan only" mode
+        setPlanRecommendationShown(true); // Indicate a plan is actively being discussed
+
+        // Create a message to reflect user's selection
+        const userSelectionMessage: Message = {
+            id: `user-select-${Date.now()}`, type: 'user',
+            content: `Tell me more about ${planName}.`, timestamp: new Date().toISOString()
+        };
+
+        // Bot's acknowledgment and prompt for further questions
+        const botResponse: Message = {
+            id: `bot-select-${Date.now()}`, type: 'bot',
+            content: `Okay, you've selected ${planName}. What specific questions do you have about its coverage, benefits, or costs?`,
+            timestamp: new Date().toISOString()
+        };
+
+        const updatedMessages = [...messages, userSelectionMessage, botResponse];
+        setMessages(updatedMessages);
+
+        // Optionally, you can trigger an immediate RAG call for the selected plan's overview
+        // setLoading(true);
+        // handleRagApiCall(`Overview of ${planName}`, updatedMessages)
+        //   .then(data => {
+        //     const overviewMessage: Message = { /* ... create message from data ... */ };
+        //     setMessages(prev => [...prev, overviewMessage]);
+        //   })
+        //   .finally(() => setLoading(false));
+    };
+
+    // Function to handle clicks on quick reply option buttons
+    const handleOptionClick = (optionText: string) => {
+        // Create a user message from the clicked option
+        const userMessage: Message = {
+            id: `user-option-${Date.now()}`, type: 'user',
+            content: optionText, timestamp: new Date().toISOString()
+        };
+        const updatedMessages = [...messages, userMessage];
+        setMessages(updatedMessages); // Add user's choice to messages
+        setLoading(true); // Set loading state
+
+        // Process the user's intent based on the clicked option, including history
+        processUserIntent(optionText, updatedMessages);
+    };
+
+    // Helper function to process intents, especially from option clicks or specific commands
+    const processUserIntent = async (intentText: string, currentHistory: Message[]) => {
+        try {
+            // Example: if an option click needs to hit the RAG system directly
+            // You might have more specific logic here based on `intentText`
+            const data = await handleRagApiCall(intentText, currentHistory); // Pass intent and history
+            const botMessage: Message = {
+                id: `bot-intent-${Date.now()}`, type: 'bot',
+                content: data.message || "I'm processing that option for you.",
+                timestamp: new Date().toISOString(),
+                recommendations: data.recommendations,
+                options: data.options,
+                confidence: data.metadata?.confidence
+            };
+            setMessages(prev => [...prev, botMessage]);
+
+        } catch (error) { // Handle errors during intent processing
+            const errorBotMessage: Message = {
+                id: `bot-error-intent-${Date.now()}`, type: 'bot',
+                content: "There was an issue processing your selection. Please try again.",
+                timestamp: new Date().toISOString()
+            };
+            setMessages(prev => [...prev, errorBotMessage]);
+        } finally {
+            setLoading(false); // Ensure loading is reset
+        }
+    };
+
+    // If the chat widget is not visible, render nothing
+    if (!isVisible) {
+        return null;
+    }
+
+    // Main JSX for the chat interface
     return (
-        <div className="flex flex-col h-screen">
-            <div className="p-4 bg-blue-500 text-white">
-                <h1 className="text-xl font-bold">Open Enrollment Assistant</h1>
+        // Outermost container for the fixed floating chat window
+        <div className="fixed bottom-4 right-4 w-[360px] h-[calc(100vh-80px)] max-h-[520px] md:w-[400px] md:max-h-[600px] flex flex-col bg-white shadow-2xl rounded-xl overflow-hidden border border-slate-300 z-50">
+            {/* Chat Header */}
+            <div className="p-3 bg-slate-50 border-b border-slate-200 flex items-center justify-between sticky top-0">
+                <div className="flex items-center">
+                    <MessageCircle className="h-6 w-6 mr-2 text-teal-600" /> {/* Aptia teal icon */}
+                    <div>
+                        <h1 className="text-sm font-semibold text-slate-700">Aptia Support</h1>
+                        <p className="text-xs text-teal-600">Online</p> {/* Status indicator */}
+                    </div>
+                </div>
+                {/* Close button for the chat widget */}
+                {onClose && (
+                    <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-500 hover:text-slate-700">
+                        <X className="h-5 w-5" />
+                    </Button>
+                )}
             </div>
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {messages.map((message, index) => renderMessage(message, index))}
-                <div ref={messagesEndRef} />
+
+            {/* Messages Area: Scrolls to show latest messages */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-white">
+                {messages.map((msg) => (
+                    <MessageItem
+                        key={msg.id} // Unique key for each message item
+                        message={msg}
+                        selectedPlanName={selectedPlanName}
+                        onPlanSelect={handlePlanSelection}
+                        onOptionClick={handleOptionClick}
+                    />
+                ))}
+                {/* Typing Indicator: Shows when 'loading' is true */}
+                {loading && messages.length > 0 && messages[messages.length -1]?.type === 'user' && (
+                    <div className="flex justify-start mb-3">
+                        <Bot className="h-6 w-6 text-slate-500 mr-2 flex-shrink-0 mt-1" />
+                        <div>
+                            <div className="bg-slate-100 text-slate-600 rounded-lg rounded-bl-none py-2 px-3 max-w-[70%] shadow-sm text-sm animate-pulse">
+                                Aptia Assistant is typing...
+                            </div>
+                        </div>
+                    </div>
+                )}
+                <div ref={messagesEndRef} /> {/* Invisible element to scroll to */}
             </div>
-            <form onSubmit={handleSubmit} className="p-4 border-t">
-                <div className="flex gap-2">
-                    <input
+
+            {/* Input Form Area */}
+            <form onSubmit={handleSubmit} className="p-2.5 bg-slate-50 border-t border-slate-200 sticky bottom-0">
+                <div className="flex items-center gap-2">
+                    <Input
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         placeholder="Type your message..."
-                        className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        disabled={loading}
+                        className="flex-1 bg-white border-slate-300 focus:ring-1 focus:ring-teal-500 focus:border-teal-500 rounded-md px-3 py-2 text-sm"
+                        disabled={loading} // Disable input while loading/bot is typing
+                        onKeyPress={(event) => { // Allow sending message with Enter key
+                            if (event.key === 'Enter' && !event.shiftKey && !loading) {
+                                handleSubmit(event as any); // Type assertion for event
+                            }
+                        }}
                     />
-                    <Button type="submit" disabled={loading}>
+                    <Button type="submit" size="icon" className="bg-teal-500 hover:bg-teal-600 text-white rounded-md w-9 h-9" disabled={loading}>
                         <Send className="w-4 h-4" />
                     </Button>
                 </div>

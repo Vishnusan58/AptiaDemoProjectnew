@@ -23,7 +23,7 @@ export class InsuranceService {
         try {
             const demographicsPath = path.join(process.cwd(), 'data/demograph.json');
             const surveyResponsesPath = path.join(process.cwd(), 'data/survey_responses.json');
-            const planDetailsPath = path.join(process.cwd(), 'data/survey_responses_plan_details.json');
+            const planDetailsPath = path.join(process.cwd(), 'data/plan_details.json');
 
             this.demographics = JSON.parse(await readFile(demographicsPath, 'utf-8'));
             this.surveyResponses = JSON.parse(await readFile(surveyResponsesPath, 'utf-8'));
